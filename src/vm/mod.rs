@@ -8,13 +8,12 @@ type InterpreterResult = Result<(), Error>;
 
 macro_rules! binop {
     ($self:ident, $op:tt) => {{
-        let b = $self.stack.pop().unwrap(); 
-        let a = $self.stack.pop().unwrap(); 
+        let b = $self.stack.pop().unwrap();
+        let a = $self.stack.pop().unwrap();
         let value = a $op b;
         $self.stack.push(value);
     }};
 }
-
 
 #[derive(Debug)]
 pub enum Error {
@@ -25,7 +24,7 @@ pub enum Error {
 pub struct VM {
     chunk: Chunk,
     pc: usize,
-    stack: Vec<Value>
+    stack: Vec<Value>,
 }
 
 impl VM {
@@ -33,7 +32,7 @@ impl VM {
         VM {
             chunk: Chunk::new(),
             pc: 0,
-            stack: vec![]
+            stack: vec![],
         }
     }
 
@@ -53,7 +52,7 @@ impl VM {
                 Opcode::Add => binop!(self, +),
                 Opcode::Subtract => binop!(self, -),
                 Opcode::Multiply => binop!(self, *),
-                Opcode::Divide => binop!(self, /)
+                Opcode::Divide => binop!(self, /),
             }
             self.pc += 1;
         }

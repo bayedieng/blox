@@ -1,15 +1,14 @@
 // Parse Tokens into AST
 
-use crate::lexer::{Lexer, TokenKind};
 use crate::ast::*;
+use crate::lexer::{Lexer, TokenKind};
 
 #[derive(Debug)]
 pub enum ParseError {
-    SyntaxError
+    SyntaxError,
 }
 
 pub type ParseResult = Result<Expression, ParseError>;
-
 
 pub struct Parser {
     lexer: Lexer,
@@ -18,7 +17,7 @@ pub struct Parser {
 impl Parser {
     pub fn new(src: &str) -> Parser {
         Parser {
-            lexer: Lexer::new(src)
+            lexer: Lexer::new(src),
         }
     }
 
@@ -29,7 +28,7 @@ impl Parser {
             TokenKind::String(val) => Ok(Expression::String(val)),
             TokenKind::True => Ok(Expression::Bool(true)),
             TokenKind::False => Ok(Expression::Bool(false)),
-            _ => Err(ParseError::SyntaxError)
+            _ => Err(ParseError::SyntaxError),
         }
     }
 }

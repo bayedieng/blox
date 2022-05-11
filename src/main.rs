@@ -1,16 +1,14 @@
+use std::io::{stdin, stdout, Write};
 use std::{env, process::exit};
-use std::io::{stdin, stdout,Write};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() == 1 {
         repl()
-    }
-    else if args.len() == 2 {
+    } else if args.len() == 2 {
         run_file(&args[1])
     }
     exit(0)
-
 }
 
 fn repl() {
@@ -23,6 +21,4 @@ fn repl() {
     }
 }
 
-fn run_file(_path: &str) {
-    
-}
+fn run_file(_path: &str) {}
