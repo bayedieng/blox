@@ -4,6 +4,11 @@ use super::value::Value;
 #[repr(u8)]
 pub enum Opcode {
     Constant(Value),
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Negate,
     Return,
 }
 
@@ -22,11 +27,11 @@ impl Chunk {
         }
     }
 
-    fn write_chunk(&mut self, instruction: Opcode) {
+    pub fn write_chunk(&mut self, instruction: Opcode) {
         self.code.push(instruction)
     }
 
-    fn add_constant(&mut self, value: Value) {
+    pub fn add_constant(&mut self, value: Value) {
         self.constants.push(value)
     }
 }
