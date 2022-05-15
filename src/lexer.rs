@@ -11,6 +11,7 @@ pub enum TokenKind {
     Minus,
     Plus,
     Star,
+    Slash,
 
     // Single or More Character tokens
     Bang,
@@ -72,76 +73,78 @@ impl Lexer {
         }
     }
 
-    fn char_at(&self, idx: usize) -> char {
-        self.src.chars().nth(idx).unwrap()
+    fn char_at(&self, idx: usize) -> Option<char> {
+        self.src.chars().nth(idx)
     }
 
-    fn next_char(&mut self) -> char {
+    fn next_char(&mut self) -> Option<char> {
         self.current += 1;
         self.char_at(self.current - 1)
     }
 
-    fn peek(&self) -> char {
+    fn peek(&self) -> Option<char> {
         self.char_at(self.current)
     }
 
-    fn peek_next(&self) -> char {
-        self.char_at(self.current + 1)
+    fn peek_is_digit(&self) -> bool {
+        match self.peek() {
+            Some(c) => c.is_digit(10),
+            None => false
+        }
     }
 
-    fn eat(&mut self) {
-        self.current += 1
+    fn peek_is_alphanumeric(&self) -> bool {
+        match self.peek() {
+            Some(c) => c.is_alphanumeric(),
+            None => false
+        }
+    }
+
+    fn peek_matches_next(&self, expected: char) -> bool {
+        match self.peek() {
+            Some(c) => c == expected,
+            None => false
+        }
     }
 
     fn is_at_end(&self) -> bool {
         self.current >= self.src.len()
     }
 
-    fn is_match(&mut self, expected: char) -> bool {
-        if self.is_at_end() {
-            return false;
-        }
-
-        if self.peek() != expected {
-            return false;
-        }
-        self.current += 1;
-        true
-    }
-
     fn skip_whitespace(&mut self) {
         loop {
-            let c = self.peek();
-            match c {
-                ' ' | '\r' | '\t' => self.eat(),
-                '\n' => {
+            match self.peek() {
+                Some(' ') | Some('\r') | Some('\t') => {
+                    self.next_char();
+                }
+                Some('\n') => {
                     self.line += 1;
-                    self.eat()
+                    self.next_char();
                 }
-                '/' => {
-                    if self.peek_next() == '/' {
-                        while self.peek() != '\n' && !self.is_at_end() {
-                            self.eat()
+                Some('/') => {
+                    if self.peek_matches_next('/') {
+                        while !self.peek_matches_next('\n') && !self.is_at_end() {
+                            self.next_char();
                         }
-                        self.eat()
                     }
+
                 }
-                _ => break,
+                _ => break
             }
         }
     }
 
     fn number(&mut self) -> Token {
-        while self.peek().is_digit(10) {
-            self.eat()
+        while self.peek_is_digit() {
+            self.next_char();
         }
 
-        if self.peek() == '.' && self.peek_next().is_digit(10) {
-            self.eat()
-        }
-        while self.peek().is_digit(10) {
-            self.eat()
-        }
+       if self.peek_matches_next('.') {
+           self.next_char();
+           while self.peek_is_digit() {
+               self.next_char();
+           }
+       } 
         let num: f64 = self.src[self.start..self.current].parse().unwrap();
 
         self.make_token(TokenKind::Number(num))
@@ -156,24 +159,26 @@ impl Lexer {
     }
 
     fn string(&mut self) -> Token {
-        while self.peek() != '"' && !self.is_at_end() {
-            if self.peek() == '\n' {
+        while !self.peek_matches_next('"') && !self.is_at_end() {
+            if self.peek_matches_next('\n') {
                 self.line += 1;
             }
-            self.eat()
+            self.next_char();
         }
-
         if self.is_at_end() {
-            return self.error_token("unterminated string");
+            return self.error_token("unterminated string")
         }
+        
+        self.next_char();
         let string = self.src[self.start..self.current].to_string();
         self.make_token(TokenKind::String(string))
     }
 
     fn identifier(&mut self) -> Token {
-        while self.peek().is_alphanumeric() {
-            self.eat()
+        while self.peek_is_alphanumeric() {
+            self.next_char();
         }
+        
         let ident_or_keyword = &self.src[self.start..self.current];
         match ident_or_keyword {
             "and" => self.make_token(TokenKind::And),
@@ -204,56 +209,53 @@ impl Lexer {
         }
     }
 
+    fn make_eof(&self) -> Token {
+        Token {
+            kind: TokenKind::Eof,
+            lexeme: "\0".to_string(),
+            line: self.line,
+        }
+    }
+
+    fn token_matches(&mut self, first: TokenKind, second: TokenKind) -> Token {
+        if self.peek() == Some('=') {
+            self.next_char();
+            return self.make_token(first);
+        }
+        self.make_token(second)
+    }
+
     pub fn next_token(&mut self) -> Token {
         self.skip_whitespace();
         self.start = self.current;
         let c = self.next_char();
         match c {
-            '(' => self.make_token(TokenKind::LPar),
-            ')' => self.make_token(TokenKind::Rpar),
-            '{' => self.make_token(TokenKind::LBrace),
-            '}' => self.make_token(TokenKind::RBrace),
-            ';' => self.make_token(TokenKind::Semicolon),
-            '+' => self.make_token(TokenKind::Plus),
-            '-' => self.make_token(TokenKind::Minus),
-            '*' => self.make_token(TokenKind::Star),
-            '.' => self.make_token(TokenKind::Dot),
-            '!' => {
-                if self.is_match('=') {
-                    return self.make_token(TokenKind::NotBang);
-                }
-                self.make_token(TokenKind::Bang)
-            }
+            Some(c) => match c {
+                c if c.is_alphabetic() => self.identifier(),
+                c if c.is_digit(10) => self.number(),
 
-            '>' => {
-                if self.is_match('=') {
-                    return self.make_token(TokenKind::GreaterEqual);
-                }
-                self.make_token(TokenKind::Greater)
-            }
+                '(' => self.make_token(TokenKind::LPar),
+                ')' => self.make_token(TokenKind::Rpar),
+                '{' => self.make_token(TokenKind::LBrace),
+                '}' => self.make_token(TokenKind::RBrace),
+                ';' => self.make_token(TokenKind::Semicolon),
+                ',' => self.make_token(TokenKind::Comma),
+                '.' => self.make_token(TokenKind::Dot),
+                '-' => self.make_token(TokenKind::Minus),
+                '+' => self.make_token(TokenKind::Plus),
+                '/' => self.make_token(TokenKind::Slash),
+                '*' => self.make_token(TokenKind::Star),
 
-            '<' => {
-                if self.is_match('=') {
-                    return self.make_token(TokenKind::LessEqual);
-                }
-                self.make_token(TokenKind::Less)
-            }
-            '=' => {
-                if self.is_match('=') {
-                    return self.make_token(TokenKind::IsEqual);
-                }
-                self.make_token(TokenKind::Equal)
-            }
-            '0'..='9' => self.number(),
-            '"' => self.string(),
-            'a'..='z' | 'A'..='Z' => self.identifier(),
+                '!' => self.token_matches(TokenKind::NotBang, TokenKind::Bang),
+                '=' => self.token_matches(TokenKind::IsEqual, TokenKind::Equal),
+                '>' => self.token_matches(TokenKind::GreaterEqual, TokenKind::Greater),
+                '<' => self.token_matches(TokenKind::LessEqual, TokenKind::Less),
 
-            '\0' => self.make_token(TokenKind::Eof),
-            _ => Token {
-                kind: TokenKind::Error,
-                lexeme: format!("Token error, line {}", self.line),
-                line: self.line,
+                '"' => self.string(),
+                _ => self.error_token(&format!("Unexpected character {}", c)),
             },
+
+            None => self.make_eof(),
         }
     }
 }
