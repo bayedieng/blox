@@ -52,8 +52,8 @@ pub enum TokenKind {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Token {
     pub kind: TokenKind,
-    lexeme: String,
-    line: u64,
+    pub lexeme: String,
+    pub line: u64,
 }
 
 pub struct Lexer {
