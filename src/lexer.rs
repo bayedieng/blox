@@ -56,6 +56,16 @@ pub struct Token {
     pub line: u64,
 }
 
+impl Token {
+    pub fn default_token() -> Token {
+        Token {
+            kind: TokenKind::Error,
+            lexeme: "No token has been displayed yet".to_string(),
+            line: 0,
+        }
+    }
+}
+
 pub struct Lexer {
     start: usize,
     current: usize,
@@ -89,25 +99,25 @@ impl Lexer {
     fn peek_is_digit(&self) -> bool {
         match self.peek() {
             Some(c) => c.is_digit(10),
-            None => false
+            None => false,
         }
     }
 
     fn peek_is_alphanumeric(&self) -> bool {
         match self.peek() {
             Some(c) => c.is_alphanumeric(),
-            None => false
+            None => false,
         }
     }
 
     fn peek_matches_next(&self, expected: char) -> bool {
         match self.peek() {
             Some(c) => c == expected,
-            None => false
+            None => false,
         }
     }
 
-    fn is_at_end(&self) -> bool {
+    pub fn is_at_end(&self) -> bool {
         self.current >= self.src.len()
     }
 
@@ -121,15 +131,13 @@ impl Lexer {
                     self.line += 1;
                     self.next_char();
                 }
-                Some('/') => {
-                    if self.peek_matches_next('/') {
-                        while !self.peek_matches_next('\n') && !self.is_at_end() {
-                            self.next_char();
-                        }
+                Some('/') if self.peek_matches_next('\n') => {
+                    while !self.is_at_end() && self.peek() != Some('\n') {
+                        self.next_char();
                     }
-
-                }
-                _ => break
+                    }
+                
+                _ => break,
             }
         }
     }
@@ -139,12 +147,12 @@ impl Lexer {
             self.next_char();
         }
 
-       if self.peek_matches_next('.') {
-           self.next_char();
-           while self.peek_is_digit() {
-               self.next_char();
-           }
-       } 
+        if self.peek_matches_next('.') {
+            self.next_char();
+            while self.peek_is_digit() {
+                self.next_char();
+            }
+        }
         let num: f64 = self.src[self.start..self.current].parse().unwrap();
 
         self.make_token(TokenKind::Number(num))
@@ -166,9 +174,9 @@ impl Lexer {
             self.next_char();
         }
         if self.is_at_end() {
-            return self.error_token("unterminated string")
+            return self.error_token("unterminated string");
         }
-        
+
         self.next_char();
         let string = self.src[self.start..self.current].to_string();
         self.make_token(TokenKind::String(string))
@@ -178,7 +186,7 @@ impl Lexer {
         while self.peek_is_alphanumeric() {
             self.next_char();
         }
-        
+
         let ident_or_keyword = &self.src[self.start..self.current];
         match ident_or_keyword {
             "and" => self.make_token(TokenKind::And),
