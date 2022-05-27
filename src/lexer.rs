@@ -135,8 +135,8 @@ impl Lexer {
                     while !self.is_at_end() && self.peek() != Some('\n') {
                         self.next_char();
                     }
-                    }
-                
+                }
+
                 _ => break,
             }
         }
