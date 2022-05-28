@@ -5,12 +5,10 @@ use crate::lexer::{Lexer, Token, TokenKind};
 pub enum ParseError {
     NumberError,
     MismatchError,
-    ExpectedTokenError
-    
+    ExpectedTokenError,
 }
 
 pub type ParseResult = Result<Expression, ParseError>;
-
 
 // Precedence goes from lowest to highest descending None being lowest
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
@@ -140,11 +138,10 @@ impl From<&TokenKind> for Precedence {
     }
 }
 
-
 pub struct Parser {
     previous: Token,
     current: Token,
-    lexer: Lexer
+    lexer: Lexer,
 }
 
 impl Parser {
@@ -152,7 +149,7 @@ impl Parser {
         Parser {
             previous: Token::default_token(),
             current: Token::default_token(),
-            lexer: Lexer::new(src)
+            lexer: Lexer::new(src),
         }
     }
 
@@ -161,27 +158,27 @@ impl Parser {
         loop {
             self.current = self.lexer.next_token();
             match self.current.kind {
-                TokenKind::Error => eprintln!("Error {}. Line {}", self.current.lexeme, self.current.line),
-                _ => break
+                TokenKind::Error => {
+                    eprintln!("Error {}. Line {}", self.current.lexeme, self.current.line)
+                }
+                _ => break,
             }
         }
-
     }
 
     fn expect_and_consume(&mut self, expected: TokenKind) -> Result<Token, ParseError> {
         if self.current.kind == expected {
             self.advance();
-            return Ok(self.current.clone())
+            return Ok(self.current.clone());
         } else {
-            return Err(ParseError::MismatchError)
+            return Err(ParseError::MismatchError);
         }
     }
-
 
     fn parse_number(&self) -> ParseResult {
         match self.previous.clone().kind {
             TokenKind::Number(num) => Ok(Expression::Number(num)),
-            _ => Err(ParseError::NumberError)
+            _ => Err(ParseError::NumberError),
         }
     }
 
@@ -194,14 +191,15 @@ impl Parser {
     fn parse_unary(&mut self) -> ParseResult {
         let operator = self.previous.clone();
         let expr = self.parse_precedence(Precedence::Unary)?;
-        Ok(Expression::Unary { operator: operator, expression: Box::new(expr) })
-
+        Ok(Expression::Unary {
+            operator: operator,
+            expression: Box::new(expr),
+        })
     }
 
     fn parse_binary(&mut self) -> ParseResult {
         todo!()
     }
-
 
     fn parse_precedence(&mut self, precedence: Precedence) -> ParseResult {
         self.advance();
@@ -221,18 +219,16 @@ impl Parser {
             TokenKind::Bang | TokenKind::Minus => self.parse_unary(),
             TokenKind::Number(_) => self.parse_number(),
             TokenKind::LPar => self.parse_grouping(),
-            _ => Err(ParseError::MismatchError)
+            _ => Err(ParseError::MismatchError),
         }
     }
 
     fn parse_infix(&mut self, kind: TokenKind) -> ParseResult {
         match kind {
-            TokenKind::Plus 
-            | TokenKind::Minus
-            | TokenKind::Star
-            | TokenKind::Slash 
-            => self.parse_binary(),
-           _ => Err(ParseError::MismatchError)
+            TokenKind::Plus | TokenKind::Minus | TokenKind::Star | TokenKind::Slash => {
+                self.parse_binary()
+            }
+            _ => Err(ParseError::MismatchError),
         }
     }
 
@@ -240,5 +236,4 @@ impl Parser {
         self.advance();
         self.parse_precedence(Precedence::None)
     }
-
 }
