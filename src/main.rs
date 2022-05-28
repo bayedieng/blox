@@ -1,7 +1,7 @@
 use std::io::{stdin, stdout, Write};
 use std::{env, process::exit};
 
-use blox::compiler::Compiler;
+use blox::parser::Parser;
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() == 1 {
@@ -24,7 +24,7 @@ fn repl() {
 
 fn run_file(_path: &str) {
     let src = include_str!("../test.blox");
-    let mut compiler = Compiler::from_source(src);
-    compiler.compile();
-    println!("{:?}", compiler.chunk)
+    let mut parser = Parser::new(src);
+    let parse_result = parser.parse().unwrap();
+    println!("{:?}", parse_result)
 }

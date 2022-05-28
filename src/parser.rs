@@ -1,12 +1,16 @@
-// parses Source Code directly to bytecode
+use crate::ast::Expression;
 use crate::lexer::{Lexer, Token, TokenKind};
-use crate::vm::bytecode::{Chunk, Opcode};
-use std::fmt;
 
-// Number literals: 123
-// Parentheses for grouping: (123)
-// Unary negation: -123
-// The Four Horsemen of the Arithmetic: +, -, *, /
+#[derive(Debug)]
+pub enum ParseError {
+    NumberError,
+    MismatchError,
+    ExpectedTokenError
+    
+}
+
+pub type ParseResult = Result<Expression, ParseError>;
+
 
 // Precedence goes from lowest to highest descending None being lowest
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
@@ -136,37 +140,19 @@ impl From<&TokenKind> for Precedence {
     }
 }
 
-#[derive(Debug)]
-pub enum ParseError {
-    SyntaxError,
-    WrongTokenError,
-    TokenError(Token),
-}
 
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ParseError::SyntaxError => write!(f, "SyntaxError for some reason"),
-            ParseError::TokenError(token) => write!(f, "TokenError: {}", token.lexeme),
-            ParseError::WrongTokenError => write!(f, "Wrong token being used"),
-        }
-    }
-}
-
-pub struct Compiler {
-    current: Token,
+pub struct Parser {
     previous: Token,
-    lexer: Lexer,
-    pub chunk: Chunk,
+    current: Token,
+    lexer: Lexer
 }
 
-impl Compiler {
-    pub fn from_source(src: &str) -> Compiler {
-        Compiler {
-            current: Token::default_token(),
+impl Parser {
+    pub fn new(src: &str) -> Parser {
+        Parser {
             previous: Token::default_token(),
-            lexer: Lexer::new(src),
-            chunk: Chunk::new(),
+            current: Token::default_token(),
+            lexer: Lexer::new(src)
         }
     }
 
@@ -174,104 +160,85 @@ impl Compiler {
         self.previous = self.current.clone();
         loop {
             self.current = self.lexer.next_token();
-            match self.current.clone().kind {
-                TokenKind::Error => self.error_current(&self.current.lexeme),
-                _ => break,
+            match self.current.kind {
+                TokenKind::Error => eprintln!("Error {}. Line {}", self.current.lexeme, self.current.line),
+                _ => break
             }
         }
+
     }
 
-    fn consume(&mut self, expected: TokenKind, msg: &str) {
+    fn expect_and_consume(&mut self, expected: TokenKind) -> Result<Token, ParseError> {
         if self.current.kind == expected {
-            self.advance()
-        } else {
-            self.error_current(msg)
-        }
-    }
-
-    fn error(&self, line: u64, msg: &str) {
-        println!("[line {}] Error: {}", line, msg)
-    }
-    fn error_current(&self, msg: &str) {
-        self.error(self.current.line, msg)
-    }
-
-    fn parse_number(&mut self) {
-        match self.previous.clone().kind {
-            TokenKind::Number(num) => self.chunk.write_chunk(Opcode::Constant(num)),
-            _ => (),
-        }
-    }
-
-    fn parse_grouping(&mut self) {
-        self.parse_expression();
-        self.consume(TokenKind::Rpar, "expected a ')' token ")
-    }
-
-    fn parse_unary(&mut self) {
-        let op_kind = self.previous.clone().kind;
-        self.parse_precedence(Precedence::Unary);
-        match op_kind {
-            TokenKind::Minus => self.chunk.write_chunk(Opcode::Negate),
-            _ => todo!(),
-        }
-    }
-
-    fn parse_binary(&mut self) {
-        let op_kind = self.previous.clone().kind;
-        let next_precedence = Precedence::from(&op_kind).next();
-        self.parse_precedence(next_precedence);
-        match op_kind {
-            TokenKind::Plus => self.chunk.write_chunk(Opcode::Add),
-            TokenKind::Minus => self.chunk.write_chunk(Opcode::Subtract),
-            TokenKind::Star => self.chunk.write_chunk(Opcode::Multiply),
-            TokenKind::Slash => self.chunk.write_chunk(Opcode::Divide),
-            _ => unimplemented!(),
-        }
-    }
-
-    fn parse_expression(&mut self) {
-        self.parse_precedence(Precedence::Assignment)
-    }
-
-    fn parse_precedence(&mut self, precedence: Precedence) {
-        self.advance();
-
-        self.parse_prefix(self.previous.clone().kind);
-
-        while precedence <= Precedence::from(&self.current.kind) {
             self.advance();
-            self.parse_infix(self.previous.clone().kind);
+            return Ok(self.current.clone())
+        } else {
+            return Err(ParseError::MismatchError)
         }
     }
 
-    fn parse_prefix(&mut self, kind: TokenKind) {
+
+    fn parse_number(&self) -> ParseResult {
+        match self.previous.clone().kind {
+            TokenKind::Number(num) => Ok(Expression::Number(num)),
+            _ => Err(ParseError::NumberError)
+        }
+    }
+
+    fn parse_grouping(&mut self) -> ParseResult {
+        let expr = self.parse_precedence(Precedence::None)?;
+        self.expect_and_consume(TokenKind::Rpar)?;
+        Ok(Expression::Grouping(Box::new(expr)))
+    }
+
+    fn parse_unary(&mut self) -> ParseResult {
+        let operator = self.previous.clone();
+        let expr = self.parse_precedence(Precedence::Unary)?;
+        Ok(Expression::Unary { operator: operator, expression: Box::new(expr) })
+
+    }
+
+    fn parse_binary(&mut self) -> ParseResult {
+        todo!()
+    }
+
+
+    fn parse_precedence(&mut self, precedence: Precedence) -> ParseResult {
+        self.advance();
+        let mut expr = self.parse_prefix(self.previous.clone().kind)?;
+        while !self.lexer.is_at_end() {
+            let next_precedence = Precedence::from(self.current.clone());
+            if precedence >= next_precedence {
+                break;
+            }
+            expr = self.parse_infix(self.previous.clone().kind)?;
+        }
+        Ok(expr)
+    }
+
+    fn parse_prefix(&mut self, kind: TokenKind) -> ParseResult {
         match kind {
             TokenKind::Bang | TokenKind::Minus => self.parse_unary(),
             TokenKind::Number(_) => self.parse_number(),
             TokenKind::LPar => self.parse_grouping(),
-            _ => unimplemented!(),
+            _ => Err(ParseError::MismatchError)
         }
     }
 
-    fn parse_infix(&mut self, kind: TokenKind) {
+    fn parse_infix(&mut self, kind: TokenKind) -> ParseResult {
         match kind {
-            TokenKind::Plus | TokenKind::Minus | TokenKind::Star | TokenKind::Slash => {
-                self.parse_binary()
-            }
-            _ => unimplemented!(),
+            TokenKind::Plus 
+            | TokenKind::Minus
+            | TokenKind::Star
+            | TokenKind::Slash 
+            => self.parse_binary(),
+           _ => Err(ParseError::MismatchError)
         }
     }
 
-    fn is_eof(&self) -> bool {
-        self.current.kind == TokenKind::Eof
-    }
-
-    pub fn compile(&mut self) {
+    pub fn parse(&mut self) -> ParseResult {
         self.advance();
-        while !self.is_eof() {
-            self.parse_expression()
-        }
-        self.chunk.write_chunk(Opcode::Return)
+        self.parse_precedence(Precedence::None)
     }
+
 }
