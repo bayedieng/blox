@@ -189,7 +189,7 @@ impl Parser {
     }
 
     fn parse_unary(&mut self) -> ParseResult {
-        let operator = self.previous.clone();
+        let operator = self.previous.clone().kind;
         let expr = self.parse_precedence(Precedence::Unary)?;
         Ok(Expression::Unary {
             operator: operator,
