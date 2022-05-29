@@ -1,4 +1,4 @@
-use crate::lexer::Token;
+use crate::lexer::TokenKind;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
@@ -6,14 +6,14 @@ pub enum Expression {
 
     Binary {
         lhs: Box<Expression>,
-        operator: Token,
+        operator: TokenKind,
         rhs: Box<Expression>,
     },
 
     Grouping(Box<Expression>),
 
     Unary {
-        operator: Token,
+        operator: TokenKind,
         expression: Box<Expression>,
     },
 }
