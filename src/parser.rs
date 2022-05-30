@@ -1,12 +1,18 @@
 use crate::ast::Expression;
 use crate::lexer::{Lexer, Token, TokenKind};
+use std::fmt;
 
-#[derive(Debug)]
 pub enum ParseError {
-    NumberError,
-    MismatchError,
-    ExpectedTokenError,
+    UnexpectedError(&'static str)
 }
+
+impl fmt::Debug for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            ParseError::UnexpectedError(msg) => write!(f, "unexpected {}", msg)
+        }
+    }
+} 
 
 pub type ParseResult = Result<Expression, ParseError>;
 
@@ -171,69 +177,81 @@ impl Parser {
             self.advance();
             return Ok(self.current.clone());
         } else {
-            return Err(ParseError::MismatchError);
+            return Err(ParseError::UnexpectedError("token"));
         }
     }
 
-    fn parse_number(&self) -> ParseResult {
+    fn parse_number(&mut self) -> ParseResult {
         match self.previous.clone().kind {
             TokenKind::Number(num) => Ok(Expression::Number(num)),
-            _ => Err(ParseError::NumberError),
+            _ => Err(ParseError::UnexpectedError("number"))
         }
+    }
+    
+    fn parse_expression(&mut self) -> ParseResult {
+        self.parse_precedence(Precedence::Assignment)
     }
 
     fn parse_grouping(&mut self) -> ParseResult {
-        let expr = self.parse_precedence(Precedence::None)?;
+        let expression = self.parse_expression()?;
         self.expect_and_consume(TokenKind::Rpar)?;
-        Ok(Expression::Grouping(Box::new(expr)))
+        Ok(Expression::Grouping(Box::new(expression)))
     }
 
     fn parse_unary(&mut self) -> ParseResult {
         let operator = self.previous.clone().kind;
-        let expr = self.parse_precedence(Precedence::Unary)?;
-        Ok(Expression::Unary {
-            operator: operator,
-            expression: Box::new(expr),
-        })
+        let expression = self.parse_expression()?;
+        Ok(Expression::Unary { operator: operator, expression: Box::new(expression)})
+
     }
 
-    fn parse_binary(&mut self) -> ParseResult {
-        todo!()
+    fn parse_binary(&mut self, left: Expression) -> ParseResult {
+        let operator = self.previous.clone().kind;
+        let right = self.parse_precedence(Precedence::from(&operator))?;
+        Ok(Expression::Binary { 
+            left: Box::new(left), 
+            operator: operator, 
+            right: Box::new(right)})
     }
 
     fn parse_precedence(&mut self, precedence: Precedence) -> ParseResult {
         self.advance();
-        let mut expr = self.parse_prefix(self.previous.clone().kind)?;
-        while !self.lexer.is_at_end() {
-            let next_precedence = Precedence::from(self.current.clone());
-            if precedence >= next_precedence {
-                break;
-            }
-            expr = self.parse_infix(self.previous.clone().kind)?;
+        if self.previous == Token::default_token() {
+            self.advance()
+        }
+        let mut expr = self.parse_prefix()?;
+        while precedence <= Precedence::from(self.current.clone()) {
+            self.advance();
+            expr = self.parse_infix(expr)?;
         }
         Ok(expr)
+
     }
 
-    fn parse_prefix(&mut self, kind: TokenKind) -> ParseResult {
-        match kind {
-            TokenKind::Bang | TokenKind::Minus => self.parse_unary(),
+    fn parse_prefix(&mut self) -> ParseResult {
+        match self.previous.clone().kind {
             TokenKind::Number(_) => self.parse_number(),
             TokenKind::LPar => self.parse_grouping(),
-            _ => Err(ParseError::MismatchError),
+            TokenKind::Bang | TokenKind::Minus => self.parse_unary(),
+            _ => Err(ParseError::UnexpectedError("prefix"))
         }
     }
 
-    fn parse_infix(&mut self, kind: TokenKind) -> ParseResult {
-        match kind {
-            TokenKind::Plus | TokenKind::Minus | TokenKind::Star | TokenKind::Slash => {
-                self.parse_binary()
-            }
-            _ => Err(ParseError::MismatchError),
+
+    fn parse_infix(&mut self, left: Expression) -> ParseResult {
+        match self.previous.clone().kind {
+            TokenKind::Minus
+            | TokenKind::Plus
+            | TokenKind::Star
+            | TokenKind::Slash
+            => self.parse_binary(left),
+            _ => Err(ParseError::UnexpectedError("infix"))
         }
     }
 
     pub fn parse(&mut self) -> ParseResult {
-        self.advance();
-        self.parse_precedence(Precedence::None)
+        self.parse_expression()
     }
+
+  
 }

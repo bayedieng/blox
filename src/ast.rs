@@ -5,9 +5,9 @@ pub enum Expression {
     Number(f64),
 
     Binary {
-        lhs: Box<Expression>,
+        left: Box<Expression>,
         operator: TokenKind,
-        rhs: Box<Expression>,
+        right: Box<Expression>,
     },
 
     Grouping(Box<Expression>),
