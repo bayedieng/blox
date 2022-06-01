@@ -2,7 +2,7 @@ use std::io::{stdin, stdout, Write};
 use std::mem;
 use std::{env, process::exit};
 
-use blox::jit;
+use blox::jit::JIT;
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     if args.len() == 1 {
@@ -25,12 +25,12 @@ fn repl() {
 
 fn run_file(_path: &str) -> Result<(), String> {
     let src = include_str!("../test.blox");
-    let mut jit = jit::JIT::new();
-    let code = jit.compile(src)?;
-    Ok(println!("{:?}", code))
+    let mut jit = JIT::new();
+    println!("code output is {}", run_float_constant(&mut jit, src)?);
+    Ok(())
 }
 
-unsafe fn run_code<I, O>(jit: &mut jit::JIT, code: &str, input: I) -> Result<O, String> {
+unsafe fn run_code<I, O>(jit: &mut JIT, code: &str, input: I) -> Result<O, String> {
     // Pass the string to the JIT, and it returns a raw pointer to machine code.
     let code_ptr = jit.compile(code)?;
     // Cast the raw pointer to a typed function pointer. This is unsafe, because
@@ -39,4 +39,8 @@ unsafe fn run_code<I, O>(jit: &mut jit::JIT, code: &str, input: I) -> Result<O, 
     let code_fn = mem::transmute::<_, fn(I) -> O>(code_ptr);
     // And now we can call it!
     Ok(code_fn(input))
+}
+
+fn run_float_constant(jit: &mut JIT, src: &str) -> Result<isize, String> {
+    unsafe { run_code(jit, src, ()) }
 }
