@@ -105,21 +105,14 @@ impl<'a> FunctionTranslator<'a> {
             Expression::Grouping(grouping_expression) => match *grouping_expression {
                 _ => Ok(self.translate_expression(*grouping_expression)?),
             },
-            Expression::Unary {
-                operator,
-                expression: unary_expression,
-            } => match operator {
-                TokenKind::Minus => match *unary_expression {
+            Expression::Unary(operator, expression) => match operator {
+                TokenKind::Minus => match *expression {
                     Expression::Number(num) => Ok(self.builder.ins().f64const(-num)),
                     _ => Err(eprintln!("Not correct value for negation")),
                 },
                 _ => unimplemented!("just takes negative numbers for now"),
             },
-            Expression::Binary {
-                left,
-                operator,
-                right,
-            } => {
+            Expression::Binary(left, operator, right) => {
                 let left = self.translate_expression(*left)?;
                 let right = self.translate_expression(*right)?;
 

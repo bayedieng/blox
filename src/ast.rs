@@ -4,16 +4,9 @@ use crate::lexer::TokenKind;
 pub enum Expression {
     Number(f64),
 
-    Binary {
-        left: Box<Expression>,
-        operator: TokenKind,
-        right: Box<Expression>,
-    },
+    Binary(Box<Expression>, TokenKind, Box<Expression>),
 
     Grouping(Box<Expression>),
 
-    Unary {
-        operator: TokenKind,
-        expression: Box<Expression>,
-    },
+    Unary(TokenKind, Box<Expression>),
 }

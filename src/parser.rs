@@ -201,20 +201,17 @@ impl Parser {
     fn parse_unary(&mut self) -> ParseResult {
         let operator = self.previous.clone().kind;
         let expression = self.parse_expression()?;
-        Ok(Expression::Unary {
-            operator: operator,
-            expression: Box::new(expression),
-        })
+        Ok(Expression::Unary(operator, Box::new(expression)))
     }
 
     fn parse_binary(&mut self, left: Expression) -> ParseResult {
         let operator = self.previous.clone().kind;
         let right = self.parse_precedence(Precedence::from(&operator))?;
-        Ok(Expression::Binary {
-            left: Box::new(left),
-            operator: operator,
-            right: Box::new(right),
-        })
+        Ok(Expression::Binary(
+            Box::new(left),
+            operator,
+            Box::new(right),
+        ))
     }
 
     fn parse_precedence(&mut self, precedence: Precedence) -> ParseResult {
