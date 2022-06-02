@@ -56,7 +56,7 @@ impl JIT {
 
     fn translate(&mut self, expr: Expression) -> Result<(), String> {
         // The only literal blox supports for now is the number literal(f64)
-        let float = self.module.target_config().pointer_type();
+        let float = AbiParam::new(types::F64).value_type;
 
         self.context
             .func
