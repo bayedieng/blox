@@ -88,7 +88,7 @@ impl JIT {
 
         translator.builder.ins().return_(&[return_value]);
         translator.builder.finalize();
-
+        println!("{}", self.context.func.display());
         Ok(())
     }
 }
