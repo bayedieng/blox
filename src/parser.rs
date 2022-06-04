@@ -181,10 +181,13 @@ impl Parser {
         }
     }
 
-    fn parse_number(&mut self) -> ParseResult {
+    fn parse_primary(&mut self) -> ParseResult {
         match self.previous.clone().kind {
             TokenKind::Number(num) => Ok(Expression::Number(num)),
-            _ => Err(ParseError::UnexpectedError("number")),
+            TokenKind::True => Ok(Expression::Bool(true)),
+            TokenKind::False => Ok(Expression::Bool(false)),
+            TokenKind::Nil => Ok(Expression::Nil),
+            _ => Err(ParseError::UnexpectedError("not primary token")),
         }
     }
 
@@ -229,7 +232,11 @@ impl Parser {
 
     fn parse_prefix(&mut self) -> ParseResult {
         match self.previous.clone().kind {
-            TokenKind::Number(_) => self.parse_number(),
+            TokenKind::Number(_) 
+            | TokenKind::True
+            | TokenKind::False 
+            | TokenKind::Nil
+            => self.parse_primary(),
             TokenKind::LPar => self.parse_grouping(),
             TokenKind::Bang | TokenKind::Minus => self.parse_unary(),
             _ => Err(ParseError::UnexpectedError("prefix")),

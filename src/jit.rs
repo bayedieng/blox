@@ -102,6 +102,11 @@ impl<'a> FunctionTranslator<'a> {
     fn translate_expression(&mut self, expr: Expression) -> Result<Value, ()> {
         match expr {
             Expression::Number(num) => Ok(self.builder.ins().f64const(num)),
+            Expression::Bool(bool) => {
+                let value = Value::new(bool as usize);
+                Ok(self.builder.ins().bint(types::B1, value))
+            }
+            Expression::Nil => Ok(self.builder.ins().null(types::F64)),
             Expression::Grouping(grouping_expression) => match *grouping_expression {
                 _ => Ok(self.translate_expression(*grouping_expression)?),
             },
@@ -111,7 +116,8 @@ impl<'a> FunctionTranslator<'a> {
                     _ => Err(eprintln!("Not correct value for negation")),
                 },
                 _ => unimplemented!("just takes negative numbers for now"),
-            },
+            }
+
             Expression::Binary(left, operator, right) => {
                 let left = self.translate_expression(*left)?;
                 let right = self.translate_expression(*right)?;
@@ -143,3 +149,4 @@ fn declare_variable(
     }
     var
 }
+
