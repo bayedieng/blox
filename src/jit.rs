@@ -102,11 +102,6 @@ impl<'a> FunctionTranslator<'a> {
     fn translate_expression(&mut self, expr: Expression) -> Result<Value, ()> {
         match expr {
             Expression::Number(num) => Ok(self.builder.ins().f64const(num)),
-            Expression::Bool(bool) => {
-                let value = Value::new(bool as usize);
-                Ok(self.builder.ins().bint(types::B1, value))
-            }
-            Expression::Nil => Ok(self.builder.ins().null(types::F64)),
             Expression::Grouping(grouping_expression) => match *grouping_expression {
                 _ => Ok(self.translate_expression(*grouping_expression)?),
             },
@@ -130,6 +125,7 @@ impl<'a> FunctionTranslator<'a> {
                     _ => unimplemented!("other binary operations have not been implemented yet"),
                 }
             }
+            _ => unimplemented!("implement once you have functions")
         }
     }
 }
