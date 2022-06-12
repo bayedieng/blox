@@ -232,11 +232,9 @@ impl Parser {
 
     fn parse_prefix(&mut self) -> ParseResult {
         match self.previous.clone().kind {
-            TokenKind::Number(_) 
-            | TokenKind::True
-            | TokenKind::False 
-            | TokenKind::Nil
-            => self.parse_primary(),
+            TokenKind::Number(_) | TokenKind::True | TokenKind::False | TokenKind::Nil => {
+                self.parse_primary()
+            }
             TokenKind::LPar => self.parse_grouping(),
             TokenKind::Bang | TokenKind::Minus => self.parse_unary(),
             _ => Err(ParseError::UnexpectedError("prefix")),

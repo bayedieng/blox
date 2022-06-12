@@ -24,7 +24,8 @@ fn repl() {
 
 fn run_file(_path: &str) -> Result<(), String> {
     let src = include_str!("../test.blox");
-    let mut jit = JIT::new();
+    let mut jit = JIT::default();
+    println!("8");
     jit.compile(src)?;
 
     Ok(())

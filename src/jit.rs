@@ -14,20 +14,34 @@ pub struct JIT {
     module: JITModule,
 }
 
-impl JIT {
-    pub fn new() -> JIT {
-        let builder = JITBuilder::new(cranelift_module::default_libcall_names()).unwrap();
+impl Default for JIT {
+    fn default() -> Self {
+        let mut flag_builder = settings::builder();
+        flag_builder.set("is_pic", "false");
+
+        let isa_builder = cranelift_native::builder()
+            .unwrap_or_else(|msg| panic!("host machine is not supported: {}", msg));
+
+        let isa = isa_builder
+            .finish(settings::Flags::new(flag_builder))
+            .unwrap();
+
+        let builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
+
         let module = JITModule::new(builder);
         JIT {
             builder_context: FunctionBuilderContext::new(),
             context: module.make_context(),
-            module: module,
+            module,
         }
     }
+}
 
+impl JIT {
     pub fn compile(&mut self, src: &str) -> Result<*const u8, String> {
         let mut parser = Parser::new(src);
         let expression = parser.parse().unwrap();
+        println!("{:?}", expression);
 
         self.translate(expression)?;
 
@@ -111,7 +125,7 @@ impl<'a> FunctionTranslator<'a> {
                     _ => Err(eprintln!("Not correct value for negation")),
                 },
                 _ => unimplemented!("just takes negative numbers for now"),
-            }
+            },
 
             Expression::Binary(left, operator, right) => {
                 let left = self.translate_expression(*left)?;
@@ -125,7 +139,7 @@ impl<'a> FunctionTranslator<'a> {
                     _ => unimplemented!("other binary operations have not been implemented yet"),
                 }
             }
-            _ => unimplemented!("implement once you have functions")
+            _ => unimplemented!("implement once you have functions"),
         }
     }
 }
@@ -145,4 +159,3 @@ fn declare_variable(
     }
     var
 }
-

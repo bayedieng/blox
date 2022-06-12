@@ -21,6 +21,7 @@ dependencies = [
  "cranelift",
  "cranelift-jit",
  "cranelift-module",
+ "cranelift-native",
 ]
 
 [[package]]
