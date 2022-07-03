@@ -2,7 +2,6 @@ use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{Linkage, Module};
 
-use std::collections::HashMap;
 use std::mem;
 
 use crate::ast::Expression;

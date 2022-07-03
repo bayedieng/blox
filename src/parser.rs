@@ -32,46 +32,6 @@ enum Precedence {
     Primary,
 }
 
-impl Precedence {
-    fn next(&self) -> Precedence {
-        let ret_order = (self.order() + 1).min(10);
-        Precedence::from_order(ret_order)
-    }
-
-    fn order(&self) -> u8 {
-        match self {
-            Precedence::None => 0,
-            Precedence::Assignment => 1,
-            Precedence::Or => 2,
-            Precedence::And => 3,
-            Precedence::Equality => 4,
-            Precedence::Comparison => 5,
-            Precedence::Term => 6,
-            Precedence::Factor => 7,
-            Precedence::Unary => 8,
-            Precedence::Call => 9,
-            Precedence::Primary => 10,
-        }
-    }
-
-    fn from_order(order: u8) -> Precedence {
-        match order {
-            0 => Precedence::None,
-            1 => Precedence::Assignment,
-            2 => Precedence::Or,
-            3 => Precedence::And,
-            4 => Precedence::Equality,
-            5 => Precedence::Comparison,
-            6 => Precedence::Term,
-            7 => Precedence::Factor,
-            8 => Precedence::Unary,
-            9 => Precedence::Call,
-            10 => Precedence::Primary,
-            _ => panic!("Unrecognized order {}", order),
-        }
-    }
-}
-
 impl From<Token> for Precedence {
     fn from(token: Token) -> Self {
         match token.kind {
