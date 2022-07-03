@@ -3,6 +3,7 @@ use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{Linkage, Module};
 
 use std::collections::HashMap;
+use std::mem;
 
 use crate::ast::Expression;
 use crate::lexer::TokenKind;
@@ -38,10 +39,9 @@ impl Default for JIT {
 }
 
 impl JIT {
-    pub fn compile(&mut self, src: &str) -> Result<*const u8, String> {
+    pub fn compile(&mut self, src: &str) -> Result<fn() -> f64, String> {
         let mut parser = Parser::new(src);
         let expression = parser.parse().unwrap();
-        println!("{:?}", expression);
 
         self.translate(expression)?;
 
@@ -65,7 +65,7 @@ impl JIT {
 
         let code = self.module.get_finalized_function(id);
 
-        Ok(code)
+        unsafe { Ok(mem::transmute(code)) }
     }
 
     fn translate(&mut self, expr: Expression) -> Result<(), String> {
@@ -89,27 +89,19 @@ impl JIT {
 
         // seal because block will have no predeccessors
         builder.seal_block(entry_block);
-        let mut variables: HashMap<String, Variable> = HashMap::new();
-        let variable = declare_variable(float, &mut builder, &mut variables, &mut 0, "my_func");
 
-        let mut translator = FunctionTranslator { builder, variable };
+        let mut translator = FunctionTranslator { builder };
 
-        translator.translate_expression(expr).unwrap();
+        let ret = translator.translate_expression(expr).unwrap();
 
-        // return variable must be setup to hold the return value
-        let return_variable = translator.variable;
-        let return_value = translator.builder.use_var(return_variable);
-
-        translator.builder.ins().return_(&[return_value]);
+        translator.builder.ins().return_(&[ret]);
         translator.builder.finalize();
-        println!("{}", self.context.func.display());
         Ok(())
     }
 }
 
 struct FunctionTranslator<'a> {
     builder: FunctionBuilder<'a>,
-    pub variable: Variable,
 }
 
 impl<'a> FunctionTranslator<'a> {
@@ -142,20 +134,4 @@ impl<'a> FunctionTranslator<'a> {
             _ => unimplemented!("implement once you have functions"),
         }
     }
-}
-
-fn declare_variable(
-    float: types::Type,
-    builder: &mut FunctionBuilder,
-    variables: &mut HashMap<String, Variable>,
-    index: &mut usize,
-    name: &str,
-) -> Variable {
-    let var = Variable::new(*index);
-    if !variables.contains_key(name) {
-        variables.insert(name.into(), var);
-        builder.declare_var(var, float);
-        *index += 1;
-    }
-    var
 }

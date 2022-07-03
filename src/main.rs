@@ -5,9 +5,9 @@ use blox::jit::JIT;
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     if args.len() == 1 {
-        return Ok(repl());
+        repl()
     } else if args.len() == 2 {
-        return run_file(&args[1]);
+        run_file(&args[1])
     }
     exit(0)
 }
@@ -18,15 +18,10 @@ fn repl() {
         let mut s = String::new();
         let _ = stdout().flush();
         stdin().read_line(&mut s).unwrap();
-        print!("{s}")
+        let mut jit = JIT::default();
+        let code = jit.compile(&s).unwrap();
+        println!("{}", code());
     }
 }
 
-fn run_file(_path: &str) -> Result<(), String> {
-    let src = include_str!("../test.blox");
-    let mut jit = JIT::default();
-    println!("8");
-    jit.compile(src)?;
-
-    Ok(())
-}
+fn run_file(_path: &str) {}
