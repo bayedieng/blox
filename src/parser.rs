@@ -185,10 +185,8 @@ impl Parser {
                 let expression = self.parse_precedence(Precedence::Assignment)?;
                 Ok(Expression::Var(s, Box::new(expression)))
             }
-            _ => Err(ParseError::UnexpectedError("Wrong token"))
+            _ => Err(ParseError::UnexpectedError("Wrong token")),
         }
-
-
     }
 
     fn parse_precedence(&mut self, precedence: Precedence) -> ParseResult {
@@ -206,10 +204,9 @@ impl Parser {
 
     fn parse_prefix(&mut self) -> ParseResult {
         match self.previous.clone().kind {
-            TokenKind::Number(_)
-            | TokenKind::True
-            | TokenKind::False
-            | TokenKind::Nil => self.parse_primary(), 
+            TokenKind::Number(_) | TokenKind::True | TokenKind::False | TokenKind::Nil => {
+                self.parse_primary()
+            }
             TokenKind::Var => self.parse_variable(),
             TokenKind::LPar => self.parse_grouping(),
             TokenKind::Bang | TokenKind::Minus => self.parse_unary(),
